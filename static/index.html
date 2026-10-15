@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0c10">
+  <title>OmniControl - Laptop Wireless Remote</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div id="app-container">
+    <!-- Header Bar -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo-badge">
+          <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          <span class="logo-title">OmniControl</span>
+        </div>
+        <div id="connection-status" class="status-badge connecting">
+          <span class="status-dot"></span>
+          <span id="status-text">Connecting...</span>
+          <span id="ping-text" class="ping-pill">--ms</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <button id="btn-haptic" class="icon-btn active" title="Toggle Haptics">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8v8m12-8v8M2 10v4m20-4v4m-12-7v14m4-14v14"/></svg>
+        </button>
+        <button id="btn-wakelock" class="icon-btn" title="Keep Screen Awake">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </button>
+        <button id="btn-fullscreen" class="icon-btn" title="Fullscreen Mode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Mode Navigation Tabs -->
+    <nav class="mode-nav">
+      <button class="nav-tab active" data-tab="trackpad">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="4"/><line x1="12" y1="6" x2="12" y2="10"/></svg>
+        <span>Mouse</span>
+      </button>
+      <button class="nav-tab" data-tab="keyboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10"/></svg>
+        <span>Keyboard</span>
+      </button>
+      <button class="nav-tab" data-tab="controller">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="6"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="12" r="2"/><path d="M12 9v6"/></svg>
+        <span>Gamepad</span>
+      </button>
+      <button class="nav-tab" data-tab="bluetooth">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 7 10 10-5 5V2l5 5L7 17"/></svg>
+        <span>Bluetooth</span>
+      </button>
+      <button class="nav-tab" data-tab="media">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+        <span>Remote</span>
+      </button>
+    </nav>
+
+    <!-- Main Content Panels -->
+    <main class="panels-container">
+
+      <!-- ================= 1. TRACKPAD PANEL ================= -->
+      <section id="panel-trackpad" class="tab-panel active">
+        <!-- Quick Touchpad Controls Bar -->
+        <div class="touchpad-toolbar">
+          <div class="sensitivity-wrap">
+            <span class="toolbar-label">Speed:</span>
+            <input type="range" id="mouse-speed" min="0.5" max="3.0" step="0.25" value="1.5">
+            <span id="speed-val">1.5x</span>
+          </div>
+          <button id="btn-drag-lock" class="tool-toggle-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>
+            <span>Drag Lock</span>
+          </button>
+          <button id="btn-gyro" class="tool-toggle-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg>
+            <span>Air Mouse</span>
+          </button>
+        </div>
+
+        <!-- Air Remote Active Card & Controls (Placed above trackpad, adjusts layout cleanly) -->
+        <div id="air-remote-banner" class="air-remote-banner hidden">
+          <div class="air-banner-header">
+            <div class="air-banner-title">
+              <span class="live-dot-pulse"></span>
+              <span>AIR REMOTE</span>
+            </div>
+            <!-- 3D Reticle Radar Mini-Widget -->
+            <div class="air-reticle-wrap" title="Motion Horizon / Tilt Feedback">
+              <div class="air-reticle-crosshair"></div>
+              <div id="air-reticle-dot" class="air-reticle-dot"></div>
+            </div>
+            <div class="air-sensor-pill">
+              <span id="air-sensor-led" class="sensor-led active"></span>
+              <span id="air-sensor-status-text">Sensors listening...</span>
+            </div>
+          </div>
+
+          <div id="air-https-notice" class="air-https-notice hidden">
+            <span>⚠️ Chrome blocks motion on HTTP.</span>
+            <a id="btn-switch-https" class="https-link" href="#">Tap to switch to HTTPS (Port 8443)</a>
+          </div>
+
+          <!-- Air Remote Smoothness Profile Selector -->
+          <div class="air-profile-row">
+            <span class="profile-label">Damping:</span>
+            <div class="air-profile-pills">
+              <button class="air-profile-btn" data-profile="smooth">Smooth</button>
+              <button class="air-profile-btn active" data-profile="balanced">Balanced</button>
+              <button class="air-profile-btn" data-profile="fast">Agile</button>
+            </div>
+          </div>
+
+          <!-- Air Remote Action Pills -->
+          <div class="air-banner-actions">
+            <button id="btn-air-mode-toggle" class="air-mode-pill active">Mode: Always Aim</button>
+            <button id="btn-air-freeze" class="air-mode-pill" title="Temporarily freeze cursor">⏸️ Freeze</button>
+            <button id="btn-air-invert-y" class="air-mode-pill" title="Invert vertical tilt">Invert Y: Off</button>
+            <button id="btn-air-recenter" class="air-mode-pill" title="Recenter sensor calibration">🎯 Recenter</button>
+          </div>
+        </div>
+
+        <!-- Touch Surface Area with Scroll Bar (Auto-adjusts height below Air Remote popup) -->
+        <div class="trackpad-wrapper">
+          <div id="touchpad-surface" class="touchpad-surface">
+            <div id="gesture-hud" class="gesture-hud hidden"></div>
+            <div id="air-drag-status-badge" class="air-drag-status-badge hidden">
+              <span>✊ DRAGGING ACTIVE</span>
+            </div>
+
+            <div id="surface-hint" class="surface-hint">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="7"/></svg>
+              <span id="surface-hint-text">1-Finger Tap: Click • Tap & Hold: Drag • 2-Finger: Right Click & Scroll • Pinch: Zoom • 3-Finger: Windows Gestures</span>
+            </div>
+            <div id="touch-ripple" class="touch-ripple"></div>
+          </div>
+          <div id="scroll-strip" class="scroll-strip" title="Fast Scroll Wheel">
+            <div class="scroll-strip-arrows">▲</div>
+            <div class="scroll-strip-track">SCROLL</div>
+            <div class="scroll-strip-arrows">▼</div>
+          </div>
+        </div>
+
+        <!-- Mouse Buttons -->
+        <div class="mouse-buttons-row">
+          <button id="btn-mouse-left" class="mouse-btn left">
+            <span class="btn-primary-text">LEFT CLICK</span>
+            <span class="btn-subtext">Tap / Hold</span>
+          </button>
+          <button id="btn-mouse-mid" class="mouse-btn mid">
+            <span>MID</span>
+          </button>
+          <button id="btn-mouse-right" class="mouse-btn right">
+            <span class="btn-primary-text">RIGHT CLICK</span>
+            <span class="btn-subtext">Context Menu</span>
+          </button>
+        </div>
+      </section>
+
+
+      <!-- ================= 2. KEYBOARD PANEL ================= -->
+      <section id="panel-keyboard" class="tab-panel">
+        <!-- Live Text Input Streamer -->
+        <div class="keyboard-input-card">
+          <div class="input-card-header">
+            <span class="card-title">Live Text Dictation & Typing</span>
+            <span class="badge-soft">Sends instantly</span>
+          </div>
+          <div class="input-stream-row">
+            <input type="text" id="type-input-field" placeholder="Type or dictate with phone keyboard..." autocomplete="off">
+            <button id="btn-send-text" class="btn-primary-glow">Type</button>
+            <button id="btn-clear-text" class="btn-ghost">✕</button>
+          </div>
+        </div>
+
+        <!-- Modifiers Row -->
+        <div class="key-row modifiers-row">
+          <button class="key-btn mod-toggle" data-key="ctrl">Ctrl</button>
+          <button class="key-btn mod-toggle" data-key="alt">Alt</button>
+          <button class="key-btn mod-toggle" data-key="shift">Shift</button>
+          <button class="key-btn mod-toggle" data-key="win">Win</button>
+          <button class="key-btn action-key" data-key="esc">Esc</button>
+          <button class="key-btn action-key" data-key="tab">Tab</button>
+        </div>
+
+        <!-- Windows Shortcuts Deck -->
+        <div class="shortcuts-grid">
+          <button class="shortcut-btn" data-hotkey="win,d">
+            <span class="sc-title">Show Desktop</span>
+            <span class="sc-sub">Win + D</span>
+          </button>
+          <button class="shortcut-btn" data-hotkey="alt,tab">
+            <span class="sc-title">Switch App</span>
+            <span class="sc-sub">Alt + Tab</span>
+          </button>
+          <button class="shortcut-btn" data-hotkey="win,tab">
+            <span class="sc-title">Task View</span>
+            <span class="sc-sub">Win + Tab</span>
+          </button>
+          <button class="shortcut-btn" data-hotkey="ctrl,z">
+            <span class="sc-title">Undo</span>
+            <span class="sc-sub">Ctrl + Z</span>
+          </button>
+          <button class="shortcut-btn" data-hotkey="ctrl,c">
+            <span class="sc-title">Copy</span>
+            <span class="sc-sub">Ctrl + C</span>
+          </button>
+          <button class="shortcut-btn" data-hotkey="ctrl,v">
+            <span class="sc-title">Paste</span>
+            <span class="sc-sub">Ctrl + V</span>
+          </button>
+          <button class="shortcut-btn" data-hotkey="prtscn">
+            <span class="sc-title">Screenshot</span>
+            <span class="sc-sub">PrtScn</span>
+          </button>
+          <button class="shortcut-btn danger" data-hotkey="alt,f4">
+            <span class="sc-title">Close App</span>
+            <span class="sc-sub">Alt + F4</span>
+          </button>
+        </div>
+
+        <!-- Arrows & Navigation Keypad -->
+        <div class="nav-cluster-row">
+          <div class="nav-actions-col">
+            <button class="key-btn special" data-key="home">Home</button>
+            <button class="key-btn special" data-key="end">End</button>
+            <button class="key-btn special" data-key="pageup">PgUp</button>
+            <button class="key-btn special" data-key="pagedown">PgDn</button>
+          </div>
+
+          <div class="arrow-dpad">
+            <div class="arrow-row">
+              <button class="key-btn arrow-btn" data-key="up">▲</button>
+            </div>
+            <div class="arrow-row">
+              <button class="key-btn arrow-btn" data-key="left">◀</button>
+              <button class="key-btn arrow-btn" data-key="down">▼</button>
+              <button class="key-btn arrow-btn" data-key="right">▶</button>
+            </div>
+          </div>
+
+          <div class="primary-actions-col">
+            <button class="key-btn enter-key" data-key="enter">Enter ⏎</button>
+            <button class="key-btn delete-key" data-key="backspace">⌫ Back</button>
+            <button class="key-btn delete-key" data-key="delete">Del</button>
+            <button class="key-btn space-key" data-key="space">Space</button>
+          </div>
+        </div>
+
+        <!-- Function Keys Accordion -->
+        <details class="function-keys-box">
+          <summary>Function Keys (F1 - F12)</summary>
+          <div class="fn-grid">
+            <button class="key-btn fn" data-key="f1">F1</button>
+            <button class="key-btn fn" data-key="f2">F2</button>
+            <button class="key-btn fn" data-key="f3">F3</button>
+            <button class="key-btn fn" data-key="f4">F4</button>
+            <button class="key-btn fn" data-key="f5">F5</button>
+            <button class="key-btn fn" data-key="f6">F6</button>
+            <button class="key-btn fn" data-key="f7">F7</button>
+            <button class="key-btn fn" data-key="f8">F8</button>
+            <button class="key-btn fn" data-key="f9">F9</button>
+            <button class="key-btn fn" data-key="f10">F10</button>
+            <button class="key-btn fn" data-key="f11">F11</button>
+            <button class="key-btn fn" data-key="f12">F12</button>
+          </div>
+        </details>
+      </section>
+
+
+      <!-- ================= 3. GAMEPAD CONTROLLER PANEL ================= -->
+      <section id="panel-controller" class="tab-panel">
+        <!-- Controller Status Banner -->
+        <div class="controller-status-card">
+          <div class="ctrl-mode-indicator">
+            <span class="status-indicator-dot" id="ctrl-mode-dot"></span>
+            <div>
+              <div class="ctrl-mode-title" id="ctrl-mode-title">Virtual Gamepad Active</div>
+              <div class="ctrl-mode-desc" id="ctrl-mode-desc">Checking driver status...</div>
+            </div>
+          </div>
+          <button id="btn-driver-setup" class="btn-outline-pill">Driver Info</button>
+        </div>
+
+        <!-- Gamepad Main Surface -->
+        <div class="gamepad-surface-layout">
+          <!-- Shoulder Buttons (LB, LT, RB, RT) -->
+          <div class="shoulders-row">
+            <div class="shoulder-group left">
+              <button class="shoulder-btn trigger" data-ctrl-trigger="left">LT</button>
+              <button class="shoulder-btn bumper" data-ctrl-btn="LB">LB</button>
+            </div>
+            <div class="center-menu-group">
+              <button class="ctrl-meta-btn" data-ctrl-btn="BACK">SELECT</button>
+              <button class="ctrl-guide-btn" data-ctrl-btn="GUIDE">
+                <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/><path d="m8 8 8 8M16 8l-8 8" stroke="#111" stroke-width="2"/></svg>
+              </button>
+              <button class="ctrl-meta-btn" data-ctrl-btn="START">START</button>
+            </div>
+            <div class="shoulder-group right">
+              <button class="shoulder-btn bumper" data-ctrl-btn="RB">RB</button>
+              <button class="shoulder-btn trigger" data-ctrl-trigger="right">RT</button>
+            </div>
+          </div>
+
+          <!-- Dual Sticks & DPad / ABXY Area -->
+          <div class="gamepad-body-split">
+            <!-- Left Side: Thumbstick + D-Pad -->
+            <div class="gamepad-side left">
+              <div class="thumbstick-container">
+                <div class="stick-label">L-STICK (WASD)</div>
+                <div class="stick-base" id="left-stick-base">
+                  <div class="stick-nub" id="left-stick-nub"></div>
+                </div>
+              </div>
+
+              <!-- D-Pad -->
+              <div class="dpad-cross">
+                <button class="dpad-btn up" data-ctrl-dpad="UP">▲</button>
+                <div class="dpad-mid-row">
+                  <button class="dpad-btn left" data-ctrl-dpad="LEFT">◀</button>
+                  <div class="dpad-center"></div>
+                  <button class="dpad-btn right" data-ctrl-dpad="RIGHT">▶</button>
+                </div>
+                <button class="dpad-btn down" data-ctrl-dpad="DOWN">▼</button>
+              </div>
+            </div>
+
+            <!-- Right Side: ABXY Diamond + Right Stick -->
+            <div class="gamepad-side right">
+              <!-- ABXY Diamond -->
+              <div class="abxy-diamond">
+                <button class="abxy-btn btn-y" data-ctrl-btn="Y">Y</button>
+                <div class="abxy-mid-row">
+                  <button class="abxy-btn btn-x" data-ctrl-btn="X">X</button>
+                  <button class="abxy-btn btn-b" data-ctrl-btn="B">B</button>
+                </div>
+                <button class="abxy-btn btn-a" data-ctrl-btn="A">A</button>
+              </div>
+
+              <!-- Right Stick -->
+              <div class="thumbstick-container">
+                <div class="stick-label">R-STICK (Aim / View)</div>
+                <div class="stick-base" id="right-stick-base">
+                  <div class="stick-nub" id="right-stick-nub"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ================= 4. BLUETOOTH & AUDIO PANEL ================= -->
+      <section id="panel-bluetooth" class="tab-panel">
+        <!-- Active Bluetooth Audio Endpoint Card -->
+        <div class="bt-active-card">
+          <div class="bt-header-line">
+            <div class="bt-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 7 10 10-5 5V2l5 5L7 17"/></svg>
+              <span>CURRENT ACTIVE AUDIO DEVICE</span>
+            </div>
+            <button id="btn-refresh-devices" class="btn-icon-subtle" title="Refresh Devices">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            </button>
+          </div>
+
+          <div class="active-device-name" id="active-device-title">Detecting Bluetooth Device...</div>
+
+          <!-- Master Volume Slider -->
+          <div class="volume-slider-section">
+            <div class="volume-header-row">
+              <button id="btn-toggle-mute" class="volume-mute-btn">
+                <svg id="mute-icon-unmuted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                <svg id="mute-icon-muted" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"/><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+              </button>
+              <span class="volume-percent" id="volume-display-val">100%</span>
+            </div>
+
+            <div class="slider-track-wrap">
+              <input type="range" id="master-volume-slider" min="0" max="100" value="100" class="master-slider">
+            </div>
+
+            <div class="vol-quick-steppers">
+              <button class="step-btn" data-vol-step="-10">-10%</button>
+              <button class="step-btn" data-vol-step="-5">-5%</button>
+              <button class="step-btn" data-vol-step="5">+5%</button>
+              <button class="step-btn" data-vol-step="10">+10%</button>
+            </div>
+          </div>
+
+          <!-- Media Remote Controls -->
+          <div class="media-deck-row">
+            <button class="media-action-btn" data-media="prev" title="Previous Track">
+              <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="3"/></svg>
+            </button>
+            <button class="media-action-btn primary-play" data-media="playpause" title="Play / Pause">
+              <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </button>
+            <button class="media-action-btn" data-media="next" title="Next Track">
+              <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="3"/></svg>
+            </button>
+            <button class="media-action-btn" data-media="stop" title="Stop">
+              <svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Paired Devices List -->
+        <div class="devices-list-container">
+          <div class="list-section-title">
+            <span>Paired & Detected Devices on Laptop</span>
+            <span id="device-count-badge" class="badge-count">0</span>
+          </div>
+
+          <div id="devices-list" class="devices-cards-grid">
+            <!-- Dynamically populated -->
+            <div class="loading-state">Scanning Bluetooth devices...</div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ================= 5. PRESENTATION / MEDIA REMOTE PANEL ================= -->
+      <section id="panel-media" class="tab-panel">
+        <div class="remote-deck-card">
+          <div class="remote-mode-header">
+            <span class="card-title">Living Room & Presentation Remote</span>
+            <span class="badge-soft">YouTube, Netflix, PPT, VLC</span>
+          </div>
+
+          <!-- Big Play / Pause / Slide Steppers -->
+          <div class="remote-big-controls">
+            <div class="remote-triad-row">
+              <button class="remote-giant-btn prev" data-key="left" title="Previous Slide / Rewind 10s">
+                <span class="giant-icon">⏮</span>
+                <span class="giant-label">PREV / REWIND</span>
+              </button>
+
+              <button class="remote-giant-btn play" data-key="space" title="Play / Pause (Space)">
+                <span class="giant-icon">⏯</span>
+                <span class="giant-label">PLAY / PAUSE</span>
+              </button>
+
+              <button class="remote-giant-btn next" data-key="right" title="Next Slide / Forward 10s">
+                <span class="giant-icon">⏭</span>
+                <span class="giant-label">NEXT / FORWARD</span>
+              </button>
+            </div>
+
+            <!-- Presentation Specific Shortcuts -->
+            <div class="remote-actions-grid">
+              <button class="remote-sub-btn" data-key="f5">
+                <span class="sc-title">Start Slideshow</span>
+                <span class="sc-sub">F5</span>
+              </button>
+              <button class="remote-sub-btn" data-key="f11">
+                <span class="sc-title">Fullscreen</span>
+                <span class="sc-sub">F11 / F</span>
+              </button>
+              <button class="remote-sub-btn" data-key="b">
+                <span class="sc-title">Black Screen</span>
+                <span class="sc-sub">B</span>
+              </button>
+              <button class="remote-sub-btn" data-key="esc">
+                <span class="sc-title">Exit / Stop</span>
+                <span class="sc-sub">Escape</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Modal for Driver Info & Tips -->
+    <div id="driver-modal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Virtual Xbox 360 Controller Setup</h3>
+          <button id="btn-close-modal" class="btn-ghost">✕</button>
+        </div>
+        <div class="modal-body">
+          <p>This server includes native support for emulating a genuine <strong>Xbox 360 controller</strong> via <code>ViGEmBus</code> driver.</p>
+          <div class="modal-highlight-box">
+            <strong>Current Mode:</strong> <span id="modal-mode-status">Fallback Keyboard/Mouse</span>
+          </div>
+          <p>If you want real Xbox 360 controller emulation for Steam and PC games:</p>
+          <ol class="modal-steps">
+            <li>Run <code>install_controller_driver.bat</code> in the project folder on your laptop.</li>
+            <li>Click <strong>Yes</strong> to allow administrator installation.</li>
+            <li>Tap the button below to re-detect the controller.</li>
+          </ol>
+          <button id="btn-reconnect-controller" class="btn-primary-glow full-width">Re-detect Controller Driver</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,202 +1,113 @@
-# 🪐 Orbit — Universal Multi-Laptop Remote Control
+# 📱 OmniControl - Wireless Laptop Remote Control Server
 
-> Turn your phone into a low-latency universal trackpad, keyboard, and virtual workstation controller for multiple laptops simultaneously.
+Turn your smartphone into a wireless trackpad, keyboard, Xbox 360 controller, presentation remote, and Bluetooth device manager for your laptop over Wi-Fi.
 
-Orbit makes multiple physical computers feel like a single continuous virtual workspace. Arrange your laptops on a 2D canvas, move the pointer seamlessly between screens, send keystrokes, trigger multi-touch gestures, and manage displays from any mobile phone running modern web standards (PWA).
-
----
-
-## 🌟 Key Features
-
-- **📱 Mobile-First PWA Controller**: No app store install needed. Works immediately in Safari, Chrome, Edge, and Firefox on iOS and Android.
-- **⚡ Ultra-Low Latency WebSocket Pipeline**: Sub-10ms input routing over local Wi-Fi or secure tunneling.
-- **🖥️ Multi-Laptop Display Arranger**: Visual drag-and-drop 2D layout editor (similar to Windows Display Settings) that maps relative positions of your laptops.
-- **🔄 Seamless Virtual Workspace Navigation**: Switch between laptops instantaneously from the quick bar or navigate through arranged screen borders.
-- **🖱️ Precision Touch Trackpad**:
-  - 1-finger relative movement with optional acceleration
-  - 1-finger tap to left-click
-  - 2-finger tap to right-click
-  - 2-finger vertical scroll (with natural reverse scrolling toggle)
-  - Tap-and-hold drag & drop
-  - Dedicated Left / Middle / Right physical mouse buttons
-- **⌨️ Hardware & Virtual Keyboard Support**: Native mobile input bridge, modifier keys (Ctrl, Alt, Shift, Win) with latch/lock modes, Function keys (F1–F12), and power shortcuts (Alt+Tab, Win+D, Ctrl+C, Ctrl+V).
-- **🔒 Zero-Friction Secure Pairing**: 6-digit cryptographic pairing code with automatic mutual authentication and Windows Credential Manager storage.
-- **📦 Zero-Config Windows Agent**: Lightweight standalone Windows executable (`orbit-agent.exe`) with system tray controls, display detection, and failsafe input release.
+![OmniControl Banner](https://img.shields.io/badge/Platform-Windows%2010%2F11-00f0ff?style=for-the-badge&logo=windows)
+![Latency](https://img.shields.io/badge/Latency-%3C10ms%20WebSocket-10b981?style=for-the-badge)
+![Controller](https://img.shields.io/badge/Gamepad-Xbox%20360%20Virtual%20HID-3b82f6?style=for-the-badge)
 
 ---
 
-## 🏗️ Architecture Overview
+## ⚡ Features
 
-```mermaid
-flowchart TD
-    subgraph Mobile Device ["📱 Mobile Phone (PWA)"]
-        UI["Orbit PWA Controller<br/>(React + Vite + TypeScript)"]
-        Touch["Gesture Engine<br/>(useTrackpad & Virtual Keys)"]
-        WSClient["OrbitWebSocket Client"]
-        UI --> Touch --> WSClient
-    end
+### 1. 🖱️ High-Precision Trackpad & Mouse
+- **Multi-Touch Gestures**:
+  - 1-Finger Move: Ultra-smooth cursor tracking.
+  - 1-Finger Tap: Left Click.
+  - 1-Finger Double Tap: Double Click.
+  - 2-Finger Tap: Right Click (Context Menu).
+  - 2-Finger Drag: Smooth vertical & horizontal scrolling.
+- **Dedicated Scroll Wheel Strip**: Fast right-edge scroll column.
+- **Physical Buttons**: Discrete Left, Middle, and Right mouse buttons.
+- **Drag Lock**: One-touch latch for dragging windows, folders, and files.
+- **Adjustable Sensitivity**: Live speed slider (0.5x to 3.0x).
+- **Air Mouse (Gyro)**: Tilt phone in the air to guide the mouse pointer.
 
-    subgraph Central Coordinator ["🌐 Central Coordinator (FastAPI)"]
-        WSManager["WebSocket Connection Manager"]
-        Router["Input Router & Active Tracker"]
-        PairingService["Pairing & Security Service"]
-        DB[(SQLite / SQLAlchemy)]
-        WSManager <--> Router
-        WSManager <--> PairingService
-        PairingService <--> DB
-    end
+### 2. ⌨️ Keyboard & Windows Shortcuts
+- **Live Text Typing & Dictation**: Use your phone's native keyboard, speech-to-text dictation, and autocomplete to send text directly to your laptop with full Unicode support.
+- **Modifier Keys**: `Ctrl`, `Alt`, `Shift`, `Win` toggle latches.
+- **1-Tap Windows Hotkeys**:
+  - `Win + D` (Show / Hide Desktop)
+  - `Alt + Tab` (Switch active applications)
+  - `Win + Tab` (Task View)
+  - `Ctrl + C`, `Ctrl + V`, `Ctrl + Z` (Copy, Paste, Undo)
+  - `Alt + F4` (Close window)
+  - `PrtScn` (Screenshot)
+- **Arrow Pad & Navigation**: Full Arrow keys, `Home`, `End`, `Page Up`, `Page Down`.
+- **Function Keys**: Expandable drawer with `F1` through `F12`.
 
-    subgraph Laptop1 ["💻 Laptop 1 (Windows)"]
-        Agent1["Orbit Agent Client"]
-        Injector1["Input Injector (pyautogui / pynput)"]
-        Tray1["System Tray (pystray)"]
-        Agent1 --> Injector1
-        Agent1 --> Tray1
-    end
+### 3. 🎮 Virtual Game Controller (Xbox 360)
+- **Dual Analog Thumbsticks**:
+  - Left Stick (WASD movement) & Right Stick (Camera aim/look).
+  - Dynamic touch origin with normalized vector clamping (-1.0 to 1.0) and elastic spring-return.
+- **ABXY Face Buttons**: Xbox styled color-coded buttons with glowing active states.
+- **Bumpers & Triggers**: `LB`, `RB`, `LT`, `RT`.
+- **D-Pad**: 4-way tactical cross.
+- **Dual Engine Architecture**:
+  - **Native Xbox 360 Gamepad**: Powered by `ViGEmBus` driver (compatible with Steam, emulators, and all PC games).
+  - **Zero-Config Fallback**: If drivers are not installed, automatically operates in keyboard/mouse emulation mode without interrupting your gameplay.
 
-    subgraph Laptop2 ["💻 Laptop 2 (Windows)"]
-        Agent2["Orbit Agent Client"]
-        Injector2["Input Injector (pyautogui / pynput)"]
-        Tray2["System Tray (pystray)"]
-        Agent2 --> Injector2
-        Agent2 --> Tray2
-    end
+### 4. 🎧 Bluetooth & Audio Hub
+- **Live Audio Endpoint Detection**: Automatically discovers your laptop's connected Bluetooth audio devices (e.g. *Stone 120, Mivi DuoPods, Airdopes, M19, Toad One*).
+- **Master Volume Slider**: Real-time bidirectional volume synchronization (0% to 100%).
+- **Quick Stepper Buttons**: `-10%`, `-5%`, `+5%`, `+10%`.
+- **Mute / Unmute Toggle**: Instant mute with animated speaker icon.
+- **Media Controls Deck**: Play / Pause, Next Track, Previous Track, Stop.
 
-    WSClient <== "WebSocket /ws/controller" ==> WSManager
-    WSManager <== "WebSocket /ws/agent" ==> Agent1
-    WSManager <== "WebSocket /ws/agent" ==> Agent2
-```
-
----
-
-## 📁 Repository Structure
-
-```
-Orbit/
-├── agent/                      # Windows background agent (Python / PyInstaller)
-│   ├── orbit_agent/
-│   │   ├── configuration/      # AppData & Credential Manager storage
-│   │   ├── diagnostics/        # Rotating file & console logging
-│   │   ├── display/            # Screen resolution & monitor metrics
-│   │   ├── input/              # Windows mouse & keyboard event injection
-│   │   ├── networking/         # Reconnecting WebSocket client
-│   │   └── tray/               # System tray icon & menu
-│   ├── scripts/
-│   │   └── build_exe.py        # PyInstaller standalone EXE builder
-│   └── requirements.txt
-├── backend/                    # Central Coordinator service (FastAPI)
-│   ├── app/
-│   │   ├── api/                # REST (devices, pairing, layout) & WebSocket endpoints
-│   │   ├── connections/        # Connection registry & broadcast engine
-│   │   ├── core/               # Security, tokens, settings
-│   │   ├── database/           # SQLite async engine & models
-│   │   └── models/             # Device, PairingCode, Layout models
-│   ├── migrations/             # Alembic database migration scripts
-│   └── requirements.txt
-├── frontend/                   # Mobile-first PWA controller (React 18 + Vite)
-│   ├── public/                 # PWA icons, manifest.json
-│   ├── src/
-│   │   ├── components/         # AppShell, QuickSwitch, StatusBars
-│   │   ├── hooks/              # useTrackpad, gesture recognition
-│   │   ├── pages/              # Trackpad, Keyboard, Devices, Layout, Pairing, Settings
-│   │   ├── services/           # Reconnecting WebSocket abstraction
-│   │   └── store/              # Global OrbitContext & state reducer
-│   └── package.json
-├── protocol/                   # Shared protocol definitions & documentation
-│   ├── documentation/          # protocol.md
-│   └── schemas/                # messages.py (Pydantic v2 schemas)
-├── docs/                       # Architectural & setup guides
-└── scripts/                    # Convenience launch scripts
-```
+### 5. 📽️ Presentation & Living Room Remote
+- **Giant Touch Targets**: Designed for couch browsing or stage presentations.
+- **PowerPoint & Google Slides Controls**: Next slide, Previous slide, Start Slideshow (`F5`), Black Screen (`B`), Fullscreen (`F11`).
 
 ---
 
-## 🚀 Quick Start Guide
+## 🚀 Quick Start
 
-### 1. Prerequisites
-- **Python**: 3.10+
-- **Node.js**: 18+
-- **Windows**: 10 or 11 (for the agent)
-
----
-
-### 2. Run the Coordinator Backend
-
+### 1. Launch the Server
+Open a terminal in this directory and run:
 ```bash
-cd backend
-python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# Linux/macOS:
-source .venv/bin/activate
-
-pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+python run_server.py
 ```
-The coordinator API will start at `http://0.0.0.0:8000` with Swagger documentation at `http://localhost:8000/docs`.
+
+The server will automatically:
+1. Detect your laptop's local Wi-Fi IP (e.g., `192.168.29.149:8000`).
+2. Generate an **ASCII QR Code** directly in your terminal.
+3. Start the low-latency WebSocket engine on `0.0.0.0:8000`.
+
+### 2. Connect Your Phone
+1. Connect your phone to the **same Wi-Fi network** (or connect your laptop to your phone's Wi-Fi Hotspot).
+2. Open your phone camera or QR scanner and scan the terminal QR code.
+3. *Alternatively*, open your mobile browser (Chrome, Safari) and navigate to:
+   ```
+   http://<YOUR-LAPTOP-IP>:8000
+   ```
+   *(e.g., `http://192.168.29.149:8000`)*
 
 ---
 
-### 3. Run the PWA Mobile Controller
+## 🎮 Virtual Xbox 360 Controller Setup (Optional)
 
-```bash
-cd frontend
-npm install
-npm run dev -- --host 0.0.0.0
-```
-Open your mobile browser (or desktop browser in mobile responsive mode) at `http://<YOUR_COMPUTER_LOCAL_IP>:5173`.
-Tap **"Install"** or **"Add to Home Screen"** to run Orbit in full-screen PWA mode!
+OmniControl supports native virtual Xbox 360 controller emulation. To enable direct game recognition in Steam and PC games:
+1. Right-click `install_controller_driver.bat` and select **Run as Administrator**.
+2. Complete the quick ViGEmBus installer.
+3. In the phone app, tap **Driver Info** > **Re-detect Controller Driver**.
 
 ---
 
-### 4. Run the Windows Agent
+## 🛠️ Project Structure
 
-On each laptop you wish to control:
-
-```bash
-cd agent
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-python -m orbit_agent
 ```
-
-On first run, the agent will prompt for the backend URL (e.g., `http://192.168.1.50:8000`). It will request a pairing code, which you approve directly from the mobile PWA controller under **"Pairing"**.
-
-To build a standalone single-file Windows executable:
-```bash
-cd agent
-python scripts/build_exe.py
-# Output generated at: dist/orbit-agent.exe
+d:/VScode/Control/
+├── backend/
+│   ├── input_handler.py        # Win32 SendInput (Mouse, Keyboard, Media keys, Unicode typing)
+│   ├── controller_handler.py   # Xbox 360 controller emulation via vgamepad & fallback
+│   ├── bluetooth_handler.py    # Bluetooth device detection, Audio endpoints, Volume & Media
+│   └── server.py               # FastAPI application, WebSockets router, REST API
+├── static/
+│   ├── index.html              # Modern, sleek mobile-first web app
+│   ├── style.css               # Futuristic cyberpunk glassmorphic design system
+│   └── app.js                  # Touchpad gestures, virtual sticks, WebSocket client, haptics
+├── vgamepad/                   # Included vgamepad package
+├── install_controller_driver.bat # 1-click installer for ViGEmBus driver (admin prompt)
+├── run_server.py               # Main launcher with QR code generator and local IP detection
+└── requirements.txt            # Dependencies
 ```
-
----
-
-## 🔒 Security Model
-
-- **Device Authentication**: Each paired laptop receives a unique cryptographic `device_secret` hashed with SHA-256 and stored on the device via Windows Credential Manager.
-- **Short-Lived Pairing Codes**: Time-limited 6-digit codes (120-second expiry) prevent unauthorized agent joins.
-- **Failsafe Release**: If WebSocket disconnection occurs or an agent exits unexpectedly, all pressed keys and mouse buttons are automatically released to prevent stuck inputs.
-
----
-
-## 🧪 Testing
-
-```bash
-# Run backend tests
-cd backend
-pytest
-
-# Run frontend tests
-cd frontend
-npm test
-
-# Run agent tests
-cd agent
-pytest
-```
-
----
-
-## 📜 License
-MIT License. Built with precision for seamless multi-device productivity.
