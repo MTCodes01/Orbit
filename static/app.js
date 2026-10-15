@@ -313,6 +313,12 @@
     if (target === 'bluetooth') {
       loadBluetoothDevices();
     }
+
+    if (target === 'screen') {
+      startScreenMirror();
+    } else {
+      stopScreenMirror();
+    }
   }
 
   function initNavigation() {
@@ -1697,6 +1703,551 @@
     return div.innerHTML;
   }
 
+  // =========================================================================
+  // SCREEN MIRROR & INTERACTIVE TOUCH ENGINE
+  // =========================================================================
+  let screenWS = null;
+  let isScreenActive = false;
+  let screenMode = 'direct'; // 'direct' or 'trackpad'
+  let screenFpsCount = 0;
+  let screenLastFpsTime = performance.now();
+  let screenQuality = 'balanced';
+  let isScreenDragActive = false;
+  let selectedDisplayId = null;
+
+  const screenQualityConfigs = {
+    high: { fps: 30, scale: 0.85, quality: 65 },
+    balanced: { fps: 25, scale: 0.75, quality: 55 },
+    low: { fps: 15, scale: 0.50, quality: 40 },
+  };
+
+  function startScreenMirror() {
+    isScreenActive = true;
+    if (typeof refreshDisplaysList === 'function') {
+      refreshDisplaysList();
+    }
+    connectScreenWS();
+  }
+
+  function stopScreenMirror() {
+    isScreenActive = false;
+    if (screenWS) {
+      try {
+        screenWS.send(JSON.stringify({ type: 'stop' }));
+        screenWS.close();
+      } catch (e) {}
+      screenWS = null;
+    }
+  }
+
+  function connectScreenWS() {
+    if (screenWS && (screenWS.readyState === WebSocket.OPEN || screenWS.readyState === WebSocket.CONNECTING)) {
+      return;
+    }
+    const canvas = document.getElementById('screen-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    const screenLoading = document.getElementById('screen-loading-overlay');
+    const screenFpsText = document.getElementById('screen-fps-text');
+    const screenLatencyText = document.getElementById('screen-latency-text');
+
+    if (screenLoading) screenLoading.classList.remove('hidden');
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/screen`;
+
+    try {
+      screenWS = new WebSocket(wsUrl);
+      screenWS.binaryType = 'arraybuffer';
+
+      screenWS.onopen = () => {
+        const cfg = { ...(screenQualityConfigs[screenQuality] || screenQualityConfigs.balanced) };
+        if (selectedDisplayId !== null) {
+          cfg.monitor = selectedDisplayId;
+        }
+        screenWS.send(JSON.stringify({ type: 'config', ...cfg }));
+        if (screenLatencyText) screenLatencyText.textContent = '<15ms';
+      };
+
+      screenWS.onmessage = async (event) => {
+        if (!isScreenActive) return;
+        if (event.data instanceof ArrayBuffer) {
+          const blob = new Blob([event.data], { type: 'image/jpeg' });
+          try {
+            if ('createImageBitmap' in window) {
+              const bitmap = await createImageBitmap(blob);
+              if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
+                canvas.width = bitmap.width;
+                canvas.height = bitmap.height;
+              }
+              ctx.drawImage(bitmap, 0, 0);
+              bitmap.close();
+            } else {
+              const img = new Image();
+              const url = URL.createObjectURL(blob);
+              img.onload = () => {
+                if (canvas.width !== img.width || canvas.height !== img.height) {
+                  canvas.width = img.width;
+                  canvas.height = img.height;
+                }
+                ctx.drawImage(img, 0, 0);
+                URL.revokeObjectURL(url);
+              };
+              img.src = url;
+            }
+          } catch (e) {}
+
+          screenFpsCount++;
+          const now = performance.now();
+          if (now - screenLastFpsTime >= 1000) {
+            if (screenFpsText) screenFpsText.textContent = `${screenFpsCount} FPS`;
+            screenFpsCount = 0;
+            screenLastFpsTime = now;
+          }
+
+          if (screenLoading && !screenLoading.classList.contains('hidden')) {
+            screenLoading.classList.add('hidden');
+          }
+        }
+      };
+
+      screenWS.onclose = () => {
+        screenWS = null;
+        if (isScreenActive) {
+          setTimeout(connectScreenWS, 1000);
+        }
+      };
+
+      screenWS.onerror = () => {
+        try { screenWS.close(); } catch (e) {}
+      };
+    } catch (e) {
+      console.error('Screen WS error:', e);
+    }
+  }
+
+  function sendScreenControl(msg) {
+    if (screenWS && screenWS.readyState === WebSocket.OPEN) {
+      screenWS.send(JSON.stringify(msg));
+      return true;
+    }
+    return sendWS(msg);
+  }
+
+  let refreshDisplaysList = null;
+
+  function initScreenMirror() {
+    const canvas = document.getElementById('screen-canvas');
+    const viewport = document.getElementById('screen-viewport');
+    const ripple = document.getElementById('screen-touch-ripple');
+    const container = document.querySelector('.screen-view-container');
+    const modeDirect = document.getElementById('screen-mode-direct');
+    const modeTrackpad = document.getElementById('screen-mode-trackpad');
+    const displaySelect = document.getElementById('screen-display-select');
+    const qualitySelect = document.getElementById('screen-quality-select');
+    const btnFit = document.getElementById('btn-screen-fit');
+    const btnExpand = document.getElementById('btn-screen-expand');
+
+    const btnLClick = document.getElementById('btn-screen-lclick');
+    const btnRClick = document.getElementById('btn-screen-rclick');
+    const btnMClick = document.getElementById('btn-screen-mclick');
+    const btnDrag = document.getElementById('btn-screen-drag');
+    const btnKeyboard = document.getElementById('btn-screen-keyboard');
+    const hiddenInput = document.getElementById('screen-hidden-input');
+
+    if (!canvas || !viewport) return;
+
+    // Multi-Monitor Fetcher & Selector
+    refreshDisplaysList = async function () {
+      try {
+        const res = await fetch('/api/screen/monitors');
+        if (res.ok) {
+          const data = await res.json();
+          if (displaySelect && data.monitors && data.monitors.length > 0) {
+            displaySelect.innerHTML = '';
+            data.monitors.forEach((m) => {
+              const opt = document.createElement('option');
+              opt.value = m.id;
+              opt.textContent = m.name;
+
+              // Preselect primary monitor by default
+              if (selectedDisplayId === null) {
+                if (m.id === data.primary_id || m.is_primary) {
+                  opt.selected = true;
+                  selectedDisplayId = m.id;
+                }
+              } else if (selectedDisplayId === m.id) {
+                opt.selected = true;
+              }
+              displaySelect.appendChild(opt);
+            });
+
+            if (selectedDisplayId === null && displaySelect.options.length > 0) {
+              selectedDisplayId = parseInt(displaySelect.options[0].value, 10);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Could not fetch monitors list:', e);
+      }
+    };
+
+    if (displaySelect) {
+      displaySelect.addEventListener('change', (e) => {
+        selectedDisplayId = parseInt(e.target.value, 10);
+        sendScreenControl({ type: 'config', monitor: selectedDisplayId });
+        haptic(25);
+      });
+      refreshDisplaysList();
+    }
+
+    // Mode Selector
+    if (modeDirect && modeTrackpad) {
+      modeDirect.addEventListener('click', () => {
+        screenMode = 'direct';
+        modeDirect.classList.add('active');
+        modeTrackpad.classList.remove('active');
+        haptic(20);
+      });
+      modeTrackpad.addEventListener('click', () => {
+        screenMode = 'trackpad';
+        modeTrackpad.classList.add('active');
+        modeDirect.classList.remove('active');
+        haptic(20);
+      });
+    }
+
+    // Quality Selector
+    if (qualitySelect) {
+      qualitySelect.addEventListener('change', (e) => {
+        screenQuality = e.target.value;
+        const cfg = { ...(screenQualityConfigs[screenQuality] || screenQualityConfigs.balanced) };
+        if (selectedDisplayId !== null) {
+          cfg.monitor = selectedDisplayId;
+        }
+        sendScreenControl({ type: 'config', ...cfg });
+        haptic(20);
+      });
+    }
+
+    // Fit vs Fill toggle
+    if (btnFit) {
+      btnFit.addEventListener('click', () => {
+        viewport.classList.toggle('fill');
+        viewport.classList.toggle('fit');
+        haptic(25);
+      });
+    }
+
+    // Fullscreen View toggle
+    if (btnExpand) {
+      btnExpand.addEventListener('click', () => {
+        if (container) {
+          container.classList.toggle('fullscreen-expanded');
+          btnExpand.classList.toggle('active');
+          if (container.classList.contains('fullscreen-expanded')) {
+            if (document.documentElement.requestFullscreen) {
+              document.documentElement.requestFullscreen().catch(() => {});
+            }
+          }
+          haptic(30);
+        }
+      });
+    }
+
+    // Action buttons in deck
+    if (btnLClick) {
+      btnLClick.addEventListener('click', () => {
+        sendScreenControl({ type: 'mouse_button', button: 'left', action: 'click' });
+        haptic(25);
+      });
+    }
+    if (btnRClick) {
+      btnRClick.addEventListener('click', () => {
+        sendScreenControl({ type: 'mouse_button', button: 'right', action: 'click' });
+        haptic(35);
+      });
+    }
+    if (btnMClick) {
+      btnMClick.addEventListener('click', () => {
+        sendScreenControl({ type: 'mouse_button', button: 'middle', action: 'click' });
+        haptic(25);
+      });
+    }
+    if (btnDrag) {
+      btnDrag.addEventListener('click', () => {
+        isScreenDragActive = !isScreenDragActive;
+        btnDrag.classList.toggle('active', isScreenDragActive);
+        sendScreenControl({
+          type: 'mouse_button',
+          button: 'left',
+          action: isScreenDragActive ? 'down' : 'up'
+        });
+        haptic(40);
+      });
+    }
+
+    // Mobile Keyboard in Screen Mode
+    if (btnKeyboard && hiddenInput) {
+      btnKeyboard.addEventListener('click', () => {
+        hiddenInput.focus();
+        haptic(25);
+      });
+      hiddenInput.addEventListener('input', (e) => {
+        const val = hiddenInput.value;
+        if (val) {
+          sendScreenControl({ type: 'type_text', text: val });
+          hiddenInput.value = '';
+        }
+      });
+      hiddenInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace') {
+          sendScreenControl({ type: 'key', key: 'backspace', action: 'tap' });
+        } else if (e.key === 'Enter') {
+          sendScreenControl({ type: 'key', key: 'enter', action: 'tap' });
+        }
+      });
+    }
+
+    // Quick keys in Screen Deck
+    document.querySelectorAll('.screen-key-btn[data-key]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.key;
+        sendScreenControl({ type: 'key', key: key, action: 'tap' });
+        haptic(20);
+      });
+    });
+
+    document.querySelectorAll('.screen-key-btn[data-hotkey]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const keys = btn.dataset.hotkey.split(',');
+        sendScreenControl({ type: 'hotkey', keys: keys });
+        haptic(25);
+      });
+    });
+
+    // Ripple effect
+    function showRipple(clientX, clientY) {
+      if (!ripple || !viewport) return;
+      const vRect = viewport.getBoundingClientRect();
+      ripple.style.left = `${clientX - vRect.left}px`;
+      ripple.style.top = `${clientY - vRect.top}px`;
+      ripple.classList.remove('active');
+      void ripple.offsetWidth;
+      ripple.classList.add('active');
+    }
+
+    // Coordinate conversion
+    function getNormalizedCoords(touch) {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.max(0, Math.min(touch.clientX - rect.left, rect.width));
+      const y = Math.max(0, Math.min(touch.clientY - rect.top, rect.height));
+      const normX = rect.width > 0 ? (x / rect.width) : 0;
+      const normY = rect.height > 0 ? (y / rect.height) : 0;
+      return { normX, normY, clientX: touch.clientX, clientY: touch.clientY };
+    }
+
+    // Direct Touch State
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+    let lastTapTime = 0;
+    let lastTapX = 0;
+    let lastTapY = 0;
+    let longPressTimer = null;
+    let hasMovedSignificantly = false;
+
+    // Two finger scroll
+    let lastScrollY = 0;
+
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const coords = getNormalizedCoords(touch);
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        touchStartTime = Date.now();
+        hasMovedSignificantly = false;
+
+        if (screenMode === 'direct') {
+          if (longPressTimer) clearTimeout(longPressTimer);
+          longPressTimer = setTimeout(() => {
+            if (!hasMovedSignificantly) {
+              sendScreenControl({
+                type: 'touch',
+                action: 'right_click',
+                x: coords.normX,
+                y: coords.normY
+              });
+              showRipple(coords.clientX, coords.clientY);
+              haptic(50);
+              longPressTimer = null;
+            }
+          }, 450);
+        }
+      } else if (e.touches.length === 2) {
+        if (longPressTimer) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+        lastScrollY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      }
+    }, { passive: true });
+
+    canvas.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const dx = touch.clientX - touchStartX;
+        const dy = touch.clientY - touchStartY;
+        if (Math.hypot(dx, dy) > 10) {
+          hasMovedSignificantly = true;
+          if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+          }
+        }
+
+        const coords = getNormalizedCoords(touch);
+        if (screenMode === 'direct') {
+          sendScreenControl({
+            type: 'touch',
+            action: isScreenDragActive ? 'move' : 'move',
+            x: coords.normX,
+            y: coords.normY,
+            button: 'left'
+          });
+        } else {
+          sendScreenControl({
+            type: 'mouse_move',
+            dx: dx * 0.8,
+            dy: dy * 0.8,
+            accel: 1.0
+          });
+          touchStartX = touch.clientX;
+          touchStartY = touch.clientY;
+        }
+      } else if (e.touches.length === 2) {
+        const currentY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        const scrollDelta = (currentY - lastScrollY) * 0.4;
+        lastScrollY = currentY;
+        if (Math.abs(scrollDelta) > 0.5) {
+          sendScreenControl({ type: 'mouse_scroll', dx: 0, dy: scrollDelta });
+        }
+      }
+    }, { passive: true });
+
+    canvas.addEventListener('touchend', (e) => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+
+      if (!hasMovedSignificantly && e.changedTouches.length === 1) {
+        const touch = e.changedTouches[0];
+        const coords = getNormalizedCoords(touch);
+        const now = Date.now();
+        const distFromLastTap = Math.hypot(touch.clientX - lastTapX, touch.clientY - lastTapY);
+
+        showRipple(coords.clientX, coords.clientY);
+
+        if (now - lastTapTime < 320 && distFromLastTap < 25) {
+          sendScreenControl({
+            type: 'touch',
+            action: 'dblclick',
+            x: coords.normX,
+            y: coords.normY,
+            button: 'left'
+          });
+          haptic(40);
+          lastTapTime = 0;
+        } else {
+          sendScreenControl({
+            type: 'touch',
+            action: 'click',
+            x: coords.normX,
+            y: coords.normY,
+            button: 'left'
+          });
+          haptic(25);
+          lastTapTime = now;
+          lastTapX = touch.clientX;
+          lastTapY = touch.clientY;
+        }
+      } else if (isScreenDragActive) {
+        const touch = e.changedTouches[0];
+        const coords = getNormalizedCoords(touch);
+        sendScreenControl({
+          type: 'touch',
+          action: 'up',
+          x: coords.normX,
+          y: coords.normY,
+          button: 'left'
+        });
+      }
+    }, { passive: true });
+
+    // Click support for testing
+    canvas.addEventListener('click', (e) => {
+      const coords = getNormalizedCoords(e);
+      showRipple(coords.clientX, coords.clientY);
+      sendScreenControl({
+        type: 'touch',
+        action: 'click',
+        x: coords.normX,
+        y: coords.normY,
+        button: 'left'
+      });
+    });
+
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const coords = getNormalizedCoords(e);
+      showRipple(coords.clientX, coords.clientY);
+      sendScreenControl({
+        type: 'touch',
+        action: 'right_click',
+        x: coords.normX,
+        y: coords.normY
+      });
+    });
+  }
+
+  function initStartupControls() {
+    const btnStartup = document.getElementById('btn-startup');
+    if (!btnStartup) return;
+
+    async function fetchStartupStatus() {
+      try {
+        const res = await fetch('/api/startup');
+        if (res.ok) {
+          const data = await res.json();
+          btnStartup.classList.toggle('active', data.enabled);
+        }
+      } catch (e) {}
+    }
+
+    btnStartup.addEventListener('click', async () => {
+      haptic(35);
+      const isCurrentlyActive = btnStartup.classList.contains('active');
+      const newState = !isCurrentlyActive;
+      try {
+        const res = await fetch('/api/startup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: newState })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          btnStartup.classList.toggle('active', data.enabled);
+        }
+      } catch (e) {
+        console.error('Failed to toggle startup:', e);
+      }
+    });
+
+    fetchStartupStatus();
+  }
+
   // --- Init App ---
   document.addEventListener('DOMContentLoaded', () => {
     // Restore Haptics
@@ -1729,8 +2280,11 @@
     initKeyboard();
     initController();
     initBluetoothAudio();
+    initScreenMirror();
+    initStartupControls();
 
     // Start WebSocket Connection
     connectWebSocket(true);
   });
 })();
+

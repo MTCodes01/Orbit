@@ -188,6 +188,35 @@ class InputManager:
 
         SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT))
 
+    def mouse_move_abs(self, norm_x: float, norm_y: float, bounds: Optional[dict] = None):
+        """Move cursor to normalized absolute position (0.0 to 1.0) with multi-monitor support."""
+        if bounds and "left" in bounds and "width" in bounds:
+            left = bounds.get("left", 0)
+            top = bounds.get("top", 0)
+            width = bounds.get("width", 1920)
+            height = bounds.get("height", 1080)
+            x = int(left + norm_x * width)
+            y = int(top + norm_y * height)
+        else:
+            self.screen_width = self.user32.GetSystemMetrics(0)
+            self.screen_height = self.user32.GetSystemMetrics(1)
+            x = max(0, min(int(norm_x * self.screen_width), self.screen_width - 1))
+            y = max(0, min(int(norm_y * self.screen_height), self.screen_height - 1))
+        self.user32.SetCursorPos(x, y)
+
+    def mouse_click_abs(self, norm_x: float, norm_y: float, button: str = 'left', action: str = 'click', bounds: Optional[dict] = None):
+        """Move to normalized coordinates and perform mouse action."""
+        self.mouse_move_abs(norm_x, norm_y, bounds)
+        self.mouse_button(button, action)
+
+    def touch_action(self, action: str, norm_x: float, norm_y: float, button: str = 'left', bounds: Optional[dict] = None):
+        """Direct touch event from mobile screen viewer onto laptop with multi-monitor coordinate translation."""
+        self.mouse_move_abs(norm_x, norm_y, bounds)
+        if action in ('down', 'up', 'click', 'dblclick'):
+            self.mouse_button(button, action)
+        elif action == 'right_click':
+            self.mouse_button('right', 'click')
+
     def mouse_button(self, button: str, action: str):
         """
         button: 'left', 'right', 'middle'

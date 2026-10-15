@@ -33,6 +33,9 @@
       </div>
 
       <div class="header-right">
+        <button id="btn-startup" class="icon-btn" title="Launch on Windows Boot">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/></svg>
+        </button>
         <button id="btn-haptic" class="icon-btn active" title="Toggle Haptics">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8v8m12-8v8M2 10v4m20-4v4m-12-7v14m4-14v14"/></svg>
         </button>
@@ -50,6 +53,10 @@
       <button class="nav-tab active" data-tab="trackpad">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="4"/><line x1="12" y1="6" x2="12" y2="10"/></svg>
         <span>Mouse</span>
+      </button>
+      <button class="nav-tab" data-tab="screen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+        <span>Screen</span>
       </button>
       <button class="nav-tab" data-tab="keyboard">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10"/></svg>
@@ -481,6 +488,100 @@
               </button>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- ================= 6. SCREEN MIRROR & TOUCH PANEL ================= -->
+      <section id="panel-screen" class="tab-panel">
+        <div class="screen-view-container">
+          <!-- Screen Toolbar -->
+          <div class="screen-toolbar">
+            <div class="screen-mode-selector">
+              <button id="screen-mode-direct" class="screen-mode-btn active" title="Direct Touch: Tap directly on laptop screen">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="4"/></svg>
+                <span>Direct Touch</span>
+              </button>
+              <button id="screen-mode-trackpad" class="screen-mode-btn" title="Pointer Mode: Move virtual mouse over screen">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7 14 3-5 5 5 2-2-5-5 5-3z"/></svg>
+                <span>Pointer</span>
+              </button>
+            </div>
+
+            <div class="screen-fps-pill">
+              <span id="screen-stream-dot" class="screen-stream-dot active"></span>
+              <span id="screen-fps-text">-- FPS</span>
+              <span id="screen-latency-text" class="screen-latency-pill">--ms</span>
+            </div>
+
+            <div class="screen-quick-tools">
+              <!-- Display Selector -->
+              <select id="screen-display-select" class="screen-select" title="Select Display to View & Control">
+                <option value="primary">Main Display</option>
+              </select>
+
+              <!-- Quality selector -->
+              <select id="screen-quality-select" class="screen-select" title="Stream Quality">
+                <option value="high">30 FPS (HD)</option>
+                <option value="balanced" selected>25 FPS (Normal)</option>
+                <option value="low">15 FPS (Saver)</option>
+              </select>
+
+              <!-- Fit / Zoom toggle -->
+              <button id="btn-screen-fit" class="icon-btn" title="Toggle Fit Screen / 1:1">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              </button>
+
+              <!-- Fullscreen button -->
+              <button id="btn-screen-expand" class="icon-btn" title="Expand Fullscreen View">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Live Screen Canvas / Viewport Wrapper -->
+          <div id="screen-viewport" class="screen-viewport fit">
+            <canvas id="screen-canvas" width="1920" height="1080"></canvas>
+            <div id="screen-touch-ripple" class="screen-touch-ripple"></div>
+            <div id="screen-loading-overlay" class="screen-loading-overlay">
+              <div class="spinner"></div>
+              <span>Connecting to Laptop Screen...</span>
+            </div>
+          </div>
+
+          <!-- Screen Floating Action Deck -->
+          <div class="screen-deck">
+            <!-- Mouse action buttons -->
+            <div class="screen-mouse-bar">
+              <button id="btn-screen-lclick" class="screen-action-btn primary" title="Left Click">
+                <span>Left Click</span>
+              </button>
+              <button id="btn-screen-rclick" class="screen-action-btn" title="Right Click / Context Menu">
+                <span>Right Click</span>
+              </button>
+              <button id="btn-screen-mclick" class="screen-action-btn" title="Middle Click">
+                <span>Middle</span>
+              </button>
+              <button id="btn-screen-drag" class="screen-action-btn" title="Drag / Lock Selection">
+                <span>Drag Lock</span>
+              </button>
+            </div>
+
+            <!-- Quick Hotkey Deck for Screen Mode -->
+            <div class="screen-keys-bar">
+              <button class="screen-key-btn" data-key="esc">Esc</button>
+              <button class="screen-key-btn" data-key="win">Win</button>
+              <button class="screen-key-btn" data-hotkey="alt,tab">Alt+Tab</button>
+              <button class="screen-key-btn" data-hotkey="win,d">Desktop</button>
+              <button class="screen-key-btn" data-hotkey="ctrl,z">Undo</button>
+              <button class="screen-key-btn" data-key="enter">Enter</button>
+              <button id="btn-screen-keyboard" class="screen-key-btn glow" title="Open Phone Keyboard">
+                ⌨️ Type
+              </button>
+            </div>
+          </div>
+
+          <!-- Hidden Text Input to invoke mobile keyboard in screen mode -->
+          <input type="text" id="screen-hidden-input" class="visually-hidden" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         </div>
       </section>
 

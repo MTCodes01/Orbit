@@ -5,6 +5,7 @@ DeviceMotionEvent and DeviceOrientationEvent on local network.
 """
 
 import os
+import sys
 import datetime
 import ipaddress
 from cryptography import x509
@@ -21,7 +22,10 @@ def ensure_ssl_certs(local_ip: str, base_dir: str = None) -> tuple[str, str]:
     for localhost, 127.0.0.1, and the current local LAN IP.
     """
     if base_dir is None:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if getattr(sys, "frozen", False):
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
     certs_dir = os.path.join(base_dir, "certs")
     os.makedirs(certs_dir, exist_ok=True)
